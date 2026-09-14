@@ -1,0 +1,41 @@
+name: Release DMG
+
+# Собирает .dmg на macOS-раннере и прикладывает его к релизу по тегу v*.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build app and DMG
+        run: ./make-dmg.sh
+
+      - name: Checksum
+        run: shasum -a 256 build/*.dmg | tee build/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ClaudeUsage-dmg
+          path: |
+            build/*.dmg
+            build/SHA256SUMS.txt
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/*.dmg
+            build/SHA256SUMS.txt
+          body: |
+            Unsigned build. On first launch macOS blocks apps from unidentified developers:
+            right-click the app → **Open**, or run
+            `xattr -dr com.apple.quarantine /Applications/ClaudeUsage.app`.
