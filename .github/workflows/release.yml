@@ -6,6 +6,10 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# Нужно для создания релиза: по умолчанию токен Actions доступен только на чтение.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
