@@ -162,7 +162,7 @@ private struct AuthSection: View {
                         Button(T("auth.clear")) {
                             TokenStore.clear()
                             tokenSaved = false
-                            UsageStore.shared.refresh(force: true)
+                            UsageStore.shared.refresh(force: true, interactive: true)
                         }
                         .controlSize(.small)
                     }
@@ -176,7 +176,7 @@ private struct AuthSection: View {
                             TokenStore.save(manualToken.trimmingCharacters(in: .whitespacesAndNewlines))
                             manualToken = ""
                             tokenSaved = TokenStore.hasToken
-                            UsageStore.shared.refresh(force: true)
+                            UsageStore.shared.refresh(force: true, interactive: true)
                         }
                         .disabled(manualToken.trimmingCharacters(in: .whitespaces).isEmpty)
                     }

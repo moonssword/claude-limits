@@ -181,7 +181,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate, NSWindowDelegate 
         statusItem.menu = nil
     }
 
-    @objc private func refreshNow() { UsageStore.shared.refresh(force: true) }
+    @objc private func refreshNow() { UsageStore.shared.refresh(force: true, interactive: true) }
     @objc private func openSettings() { showSettings() }
     @objc private func quit() { NSApp.terminate(nil) }
 

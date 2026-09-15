@@ -65,7 +65,9 @@ final class UsageStore: ObservableObject {
         refresh()
     }
 
-    func refresh(force: Bool = false) {
+    /// `interactive` — можно ли показывать системный запрос доступа к связке ключей.
+    /// Автоматика ходит тихо, диалог появляется только когда обновление запросил пользователь.
+    func refresh(force: Bool = false, interactive: Bool = false) {
         guard !isLoading else { return }
         if let pausedUntil, pausedUntil > Date() { return }
         // Эндпоинт лимитов сам ограничен по частоте — не дёргаем его чаще раза в минуту.
@@ -73,7 +75,7 @@ final class UsageStore: ObservableObject {
         isLoading = true
         Task {
             do {
-                let fresh = try await UsageAPI.fetch()
+                let fresh = try await UsageAPI.fetch(interactive: interactive)
                 self.manualTokenRejected = UsageAPI.manualTokenWasRejected
                 self.pausedUntil = nil
                 self.rateLimitStrikes = 0

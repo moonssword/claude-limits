@@ -47,6 +47,7 @@ struct UsageSnapshot: Equatable {
 
 enum UsageError: LocalizedError, Equatable {
     case notLoggedIn
+    case needsPermission
     case keychainDenied(OSStatus)
     case keychainFailed(OSStatus)
     case malformedCredentials
@@ -59,6 +60,7 @@ enum UsageError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn: return T("err.notLoggedIn")
+        case .needsPermission: return T("err.needsPermission")
         case .keychainDenied: return T("err.keychainDenied")
         case .keychainFailed(let status): return T("err.keychainFailed", Int(status))
         case .malformedCredentials: return T("err.malformed")

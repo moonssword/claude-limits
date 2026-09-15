@@ -77,7 +77,7 @@ struct PopoverView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button(action: { store.refresh(force: true) }) {
+            Button(action: { store.refresh(force: true, interactive: true) }) {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 11, weight: .medium))
                     .opacity(store.isLoading ? 0.35 : 1)
@@ -250,9 +250,11 @@ private struct ErrorBanner: View {
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Button(T("btn.retry")) { UsageStore.shared.refresh(force: true) }
-                .controlSize(.small)
-                .padding(.top, 2)
+            Button(error == .needsPermission ? T("btn.allowAccess") : T("btn.retry")) {
+                UsageStore.shared.refresh(force: true, interactive: true)
+            }
+            .controlSize(.small)
+            .padding(.top, 2)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)

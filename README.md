@@ -63,9 +63,16 @@ in `status.json` next to it.
 
 Two modes, switchable in Settings:
 
-1. **Claude Code keychain** (default) — nothing to set up. macOS asks once per build for
-   permission to read the `Claude Code-credentials` item; click **Always Allow**.
-   The prompt returns after every rebuild, because the app signature changes.
+1. **Claude Code keychain** (default) — nothing to set up. macOS may ask once for permission
+   to read the `Claude Code-credentials` item; click **Always Allow**.
+
+   That permission does not last forever: Claude Code rewrites the item whenever it refreshes
+   its OAuth token (after a reboot, for instance), and the item's access list is reset with it.
+   So the app never asks on its own: background polls read the keychain with the system dialog
+   suppressed, and a successful read is cached — token and expiry — in the app's own keychain
+   item, which needs no permission. The original item is touched again only when that copy
+   expires (usually after 8–12 hours). If permission is needed by then, the panel shows an
+   **Allow access** button, and the dialog appears only when you press it.
 2. **Your own token** — click **Authorize via browser**. The app runs `claude setup-token`
    as a background process, so the browser opens straight away with no Terminal window and no
    automation permission: you sign in with the claude.ai session you already have, paste the

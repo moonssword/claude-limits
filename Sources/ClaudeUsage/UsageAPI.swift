@@ -15,21 +15,29 @@ enum UsageAPI {
     private struct Credentials {
         var accessToken: String
         var subscriptionType: String?
+        var expiresAt: Date?
     }
 
-    private static func readCredentials() throws -> Credentials {
-        let query: [String: Any] = [
+    /// Чтение записи Claude Code. При `interactive: false` система не показывает диалог:
+    /// если доступ не разрешён, возвращается ошибка, и пароль у пользователя не спрашивается.
+    private static func readCredentials(interactive: Bool) throws -> Credentials {
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
+        if !interactive {
+            query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUISkip
+        }
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
 
         switch status {
         case errSecSuccess: break
         case errSecItemNotFound: throw UsageError.notLoggedIn
+        case errSecInteractionNotAllowed where !interactive:
+            throw UsageError.needsPermission
         case errSecAuthFailed, errSecUserCanceled, errSecInteractionNotAllowed:
             throw UsageError.keychainDenied(status)
         default: throw UsageError.keychainFailed(status)
@@ -41,13 +49,19 @@ enum UsageAPI {
               let token = oauth["accessToken"] as? String, !token.isEmpty
         else { throw UsageError.malformedCredentials }
 
+        let expiresAt = (oauth["expiresAt"] as? Double).map { Date(timeIntervalSince1970: $0 / 1000) }
         return Credentials(accessToken: token,
-                           subscriptionType: oauth["subscriptionType"] as? String)
+                           subscriptionType: oauth["subscriptionType"] as? String,
+                           expiresAt: expiresAt)
     }
 
     // MARK: - Fetch
 
-    static func fetch() async throws -> UsageSnapshot {
+    /// - Parameter interactive: разрешено ли показывать системный запрос доступа к связке
+    ///   ключей. Автоматические опросы ходят тихо, диалог появляется только по действию
+    ///   пользователя — иначе после каждого обновления токена Claude Code приложение
+    ///   само по себе спрашивало бы пароль.
+    static func fetch(interactive: Bool) async throws -> UsageSnapshot {
         if Preferences.shared.authSource == .manualToken, let token = TokenStore.load() {
             do {
                 let snapshot = try await request(Credentials(accessToken: token, subscriptionType: nil))
@@ -59,7 +73,20 @@ enum UsageAPI {
                 await MainActor.run { manualTokenWasRejected = true }
             }
         }
-        return try await request(readCredentials())
+
+        // Пока копия токена жива, запись Claude Code не трогаем вовсе.
+        if let cached = TokenStore.cachedToken(), cached.isUsable {
+            do {
+                return try await request(Credentials(accessToken: cached.token, subscriptionType: nil))
+            } catch UsageError.unauthorized {
+                TokenStore.dropCache()      // токен отозван или обновлён — перечитаем исходник
+            }
+        }
+
+        let creds = try readCredentials(interactive: interactive)
+        let snapshot = try await request(creds)
+        TokenStore.cache(TokenStore.CachedToken(token: creds.accessToken, expiresAt: creds.expiresAt))
+        return snapshot
     }
 
     private static func request(_ creds: Credentials) async throws -> UsageSnapshot {
