@@ -27,16 +27,17 @@ enum UsageAPI {
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
-        if !interactive {
-            query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUISkip
-        }
         var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        // Без явного действия пользователя диалог с паролем показывать нельзя.
+        let status = interactive
+            ? SecItemCopyMatching(query as CFDictionary, &item)
+            : Keychain.withoutUserInteraction { SecItemCopyMatching(query as CFDictionary, &item) }
 
         switch status {
         case errSecSuccess: break
         case errSecItemNotFound: throw UsageError.notLoggedIn
-        case errSecInteractionNotAllowed where !interactive:
+        case errSecInteractionNotAllowed where !interactive,
+             errSecAuthFailed where !interactive:
             throw UsageError.needsPermission
         case errSecAuthFailed, errSecUserCanceled, errSecInteractionNotAllowed:
             throw UsageError.keychainDenied(status)
@@ -53,6 +54,46 @@ enum UsageAPI {
         return Credentials(accessToken: token,
                            subscriptionType: oauth["subscriptionType"] as? String,
                            expiresAt: expiresAt)
+    }
+
+    /// Диагностика доступа к связке ключей: `ClaudeUsage --keychain-check`.
+    static func diagnose() {
+        func describe(_ status: OSStatus) -> String {
+            let text = SecCopyErrorMessageString(status, nil) as String? ?? "—"
+            return "\(status) (\(text))"
+        }
+        func attempt(_ label: String, _ body: () -> OSStatus) {
+            let before = Date()
+            let status = body()
+            let seconds = String(format: "%.2f", Date().timeIntervalSince(before))
+            print("\(label): \(describe(status)), \(seconds) с")
+        }
+
+        func query(service: String, account: String?, silent: Bool) -> [String: Any] {
+            var q: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne
+            ]
+            if let account { q[kSecAttrAccount as String] = account }
+            if silent { q[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUISkip }
+            return q
+        }
+
+        print("приложение:", Bundle.main.bundlePath)
+        print("свой токен сохранён:", TokenStore.hasToken)
+        attempt("Claude Code, тихое чтение") {
+            Keychain.withoutUserInteraction {
+                var item: CFTypeRef?
+                return SecItemCopyMatching(query(service: keychainService, account: nil, silent: false) as CFDictionary, &item)
+            }
+        }
+        if let cached = TokenStore.cachedToken() {
+            print("кэш: годен до \(cached.expiresAt.map { ISO8601DateFormatter().string(from: $0) } ?? "—"), пригоден: \(cached.isUsable)")
+        } else {
+            print("кэш: пусто")
+        }
     }
 
     // MARK: - Fetch

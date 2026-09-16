@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 APP_NAME="ClaudeUsage"
 BUNDLE_ID="com.ibulat.claudeusage"
-VERSION="1.0.1"
+VERSION="1.0.2"
 APP="build/${APP_NAME}.app"
 
 echo "▸ Сборка бинарника…"

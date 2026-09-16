@@ -178,7 +178,7 @@ private struct AuthSection: View {
                             tokenSaved = TokenStore.hasToken
                             UsageStore.shared.refresh(force: true, interactive: true)
                         }
-                        .disabled(manualToken.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .disabled(!TokenStore.looksValid(manualToken))
                     }
                     .padding(.top, 4)
                 }

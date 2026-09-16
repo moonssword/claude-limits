@@ -244,6 +244,12 @@ private struct ErrorBanner: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if error == .needsPermission {
+                Text(T("err.permissionHint"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if error.isRecoverableByRelogin {
                 Text(T("err.hintRelogin"))
                     .font(.system(size: 10.5))

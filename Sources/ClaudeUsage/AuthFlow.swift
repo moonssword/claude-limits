@@ -138,6 +138,10 @@ final class AuthFlow: ObservableObject {
         }
 
         if let token = Self.firstMatch(Self.tokenPattern, in: raw) {
+            guard TokenStore.looksValid(token) else {
+                stage = .failed(T("auth.tokenTruncated"))
+                return
+            }
             TokenStore.save(token)
             Preferences.shared.authSource = .manualToken
             stage = .saved

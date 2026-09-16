@@ -66,18 +66,27 @@ Two modes, switchable in Settings:
 1. **Claude Code keychain** (default) — nothing to set up. macOS may ask once for permission
    to read the `Claude Code-credentials` item; click **Always Allow**.
 
-   That permission does not last forever: Claude Code rewrites the item whenever it refreshes
-   its OAuth token (after a reboot, for instance), and the item's access list is reset with it.
-   So the app never asks on its own: background polls read the keychain with the system dialog
-   suppressed, and a successful read is cached — token and expiry — in the app's own keychain
-   item, which needs no permission. The original item is touched again only when that copy
-   expires (usually after 8–12 hours). If permission is needed by then, the panel shows an
-   **Allow access** button, and the dialog appears only when you press it.
+   That permission does not last forever: Claude Code writes the item with
+   `security add-generic-password`, so its access list names only that tool, and the list is
+   recreated on every OAuth token refresh — after a reboot, for instance.
+
+   The app therefore never raises the dialog on its own. Background reads run with
+   `SecKeychainSetUserInteractionAllowed(false)` and fail silently when access is not granted
+   (`kSecUseAuthenticationUI` does **not** suppress this dialog for the file-based keychain —
+   measured: 16 s with a password prompt versus 0.01 s without). A successful read is cached,
+   with its expiry, in `~/Library/Application Support/ClaudeUsage/credentials.json` (mode 0600),
+   so the keychain is touched again only when the copy expires, usually after 8–12 hours. When
+   permission is needed the panel shows an **Allow access** button and the dialog appears only
+   on that click.
+
+   `ClaudeUsage --keychain-check` prints what the app sees: read status, timing and cache state.
 2. **Your own token** — click **Authorize via browser**. The app runs `claude setup-token`
    as a background process, so the browser opens straight away with no Terminal window and no
    automation permission: you sign in with the claude.ai session you already have, paste the
    code the page shows back into the app, and the long-lived token is stored in the app's own
-   keychain item. The access prompt never appears again. Pasting a token by hand still works.
+   file, so no keychain permission is ever needed and password prompts disappear entirely.
+   Pasting a token by hand still works; a token shorter than a real one is rejected instead of
+   being stored silently.
 
 There is deliberately no built-in OAuth flow of its own: Anthropic does not offer third-party
 OAuth client registration for subscription accounts, so an in-app login would have to run under
