@@ -45,15 +45,20 @@ open /Applications/ClaudeUsage.app
 ## Where the data comes from
 
 The app reads the Claude Code OAuth token from the login keychain (the `Claude Code-credentials`
-item) and calls `https://api.anthropic.com/api/oauth/usage` — the same source the `/usage`
+item; Claude Code appends a hash of the directory to that name when `CLAUDE_CONFIG_DIR` is set,
+and such a setup is not supported) and calls `https://api.anthropic.com/api/oauth/usage` — the same source the `/usage`
 command inside Claude Code uses. The response provides:
 
-| field            | meaning                                        |
-|------------------|------------------------------------------------|
-| `five_hour`      | 5-hour session: percent used and reset time    |
-| `seven_day`      | weekly quota across all models                 |
-| `seven_day_opus` | weekly Opus quota, when the plan has one       |
-| `extra_usage`    | pay-as-you-go extra credits                    |
+| field              | meaning                                                      |
+|--------------------|--------------------------------------------------------------|
+| `five_hour`        | 5-hour session: percent used and reset time                  |
+| `seven_day`        | weekly quota across all models                               |
+| `seven_day_sonnet` | weekly Sonnet quota (Max and Team plans)                     |
+| `seven_day_opus`   | legacy weekly Opus quota, shown only if the server sends it  |
+| `limits`           | per-model weekly windows (e.g. Fable), `scope.model` rows    |
+| `extra_usage`      | pay-as-you-go extra credits, in minor currency units         |
+
+Any window may come back with `utilization: null`; such a window is simply not shown.
 
 Nothing is sent anywhere else. History is kept locally in
 `~/Library/Application Support/ClaudeUsage/history.json`, and the outcome of the last poll
@@ -103,7 +108,7 @@ theme) and takes on color only near a limit: amber from 75 %, red from 90 %. Exh
 an exclamation mark; no connection shows dashed rings.
 
 **Panel.** Session and week in large figures: percent used, time left, reset point, progress
-bar. Below them the weekly Opus quota and extra credits when they apply, and a burn-rate estimate
+bar. Below them the per-model weekly quotas (Sonnet, Fable…) and extra credits when they apply, and a burn-rate estimate
 (`≈11%/day · about 74% by reset`, or `quota runs out Fri at 18:20`) computed from samples the
 app collects locally while it runs.
 

@@ -12,7 +12,7 @@ enum Strings {
 
     "label.week": ["en": "Week · all models", "ru": "Неделя · все модели", "de": "Woche · alle Modelle", "fr": "Semaine · tous les modèles", "es": "Semana · todos los modelos", "it": "Settimana · tutti i modelli", "pt": "Semana · todos os modelos", "ar": "الأسبوع · كل النماذج", "ko": "주간 · 전체 모델", "kk": "Апта · барлық модельдер", "ky": "Жума · бардык моделдер", "uz": "Hafta · barcha modellar"],
 
-    "label.opus": ["en": "Week · Opus", "ru": "Неделя · Opus", "de": "Woche · Opus", "fr": "Semaine · Opus", "es": "Semana · Opus", "it": "Settimana · Opus", "pt": "Semana · Opus", "ar": "الأسبوع · Opus", "ko": "주간 · Opus", "kk": "Апта · Opus", "ky": "Жума · Opus", "uz": "Hafta · Opus"],
+    "label.model": ["en": "Week · %@", "ru": "Неделя · %@", "de": "Woche · %@", "fr": "Semaine · %@", "es": "Semana · %@", "it": "Settimana · %@", "pt": "Semana · %@", "ar": "الأسبوع · %@", "ko": "주간 · %@", "kk": "Апта · %@", "ky": "Жума · %@", "uz": "Hafta · %@"],
 
     "label.extra": ["en": "Extra credits", "ru": "Доп. кредиты", "de": "Zusatzguthaben", "fr": "Crédits supplém.", "es": "Créditos extra", "it": "Crediti extra", "pt": "Créditos extras", "ar": "رصيد إضافي", "ko": "추가 크레딧", "kk": "Қосымша несие", "ky": "Кошумча кредит", "uz": "Qoʻshimcha kredit"],
 

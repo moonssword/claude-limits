@@ -118,7 +118,8 @@ enum UsageAPI {
         // Пока копия токена жива, запись Claude Code не трогаем вовсе.
         if let cached = TokenStore.cachedToken(), cached.isUsable {
             do {
-                return try await request(Credentials(accessToken: cached.token, subscriptionType: nil))
+                return try await request(Credentials(accessToken: cached.token,
+                                                  subscriptionType: cached.subscriptionType))
             } catch UsageError.unauthorized {
                 TokenStore.dropCache()      // токен отозван или обновлён — перечитаем исходник
             }
@@ -126,7 +127,8 @@ enum UsageAPI {
 
         let creds = try readCredentials(interactive: interactive)
         let snapshot = try await request(creds)
-        TokenStore.cache(TokenStore.CachedToken(token: creds.accessToken, expiresAt: creds.expiresAt))
+        TokenStore.cache(TokenStore.CachedToken(token: creds.accessToken, expiresAt: creds.expiresAt,
+                                                subscriptionType: creds.subscriptionType))
         return snapshot
     }
 
@@ -171,11 +173,14 @@ enum UsageAPI {
 
     private static let isoPlain = ISO8601DateFormatter()
 
+    /// `resets_at` приходит строкой ISO 8601; в массиве `limits` встречаются и секунды Unix.
     private static func date(_ raw: Any?) -> Date? {
+        if let seconds = raw as? Double { return Date(timeIntervalSince1970: seconds) }
         guard let s = raw as? String else { return nil }
         return isoFractional.date(from: s) ?? isoPlain.date(from: s)
     }
 
+    /// `utilization` может быть `null`: окно есть, но данных по нему нет — такое окно пропускаем.
     private static func bucket(_ raw: Any?) -> LimitBucket? {
         guard let dict = raw as? [String: Any] else { return nil }
         guard let utilization = dict["utilization"] as? Double else { return nil }
@@ -184,15 +189,46 @@ enum UsageAPI {
                            lockedReason: dict["locked_reason"] as? String)
     }
 
+    /// Недельные лимиты отдельных моделей — так же, как их показывает `/usage` в Claude Code:
+    /// Sonnet (только у Max и Team), устаревший Opus, если сервер его ещё присылает,
+    /// и строки массива `limits` с привязкой к модели (например, Fable).
+    private static func modelLimits(_ json: [String: Any], plan: String?) -> [ModelLimit] {
+        var result: [ModelLimit] = []
+        func add(_ name: String, _ bucket: LimitBucket?) {
+            guard let bucket, !result.contains(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame })
+            else { return }
+            result.append(ModelLimit(name: name, bucket: bucket))
+        }
+
+        let sonnetPlans: Set<String> = ["max", "team"]
+        if plan.map({ sonnetPlans.contains($0.lowercased()) }) ?? true {
+            add("Sonnet", bucket(json["seven_day_sonnet"]))
+        }
+        add("Opus", bucket(json["seven_day_opus"]))
+
+        for row in (json["limits"] as? [[String: Any]]) ?? [] {
+            guard let scope = row["scope"] as? [String: Any],
+                  let model = scope["model"] as? [String: Any],
+                  let name = model["display_name"] as? String, !name.isEmpty,
+                  let percent = row["percent"] as? Double
+            else { continue }
+            add(name, LimitBucket(percent: percent, resetsAt: date(row["resets_at"]), lockedReason: nil))
+        }
+        return result
+    }
+
     private static func parse(_ json: [String: Any], plan: String?) throws -> UsageSnapshot {
-        guard let session = bucket(json["five_hour"]) else { throw UsageError.badResponse }
-        let week = bucket(json["seven_day"]) ?? LimitBucket(percent: 0, resetsAt: nil, lockedReason: nil)
-        let opus = bucket(json["seven_day_opus"])
+        let session = bucket(json["five_hour"])
+        let week = bucket(json["seven_day"])
+        // Пустой ответ без обоих окон — это ошибка, а не «0 % использовано».
+        guard session != nil || week != nil else { throw UsageError.badResponse }
+        let empty = LimitBucket(percent: 0, resetsAt: nil, lockedReason: nil)
 
         var extra: ExtraUsage?
+        // Суммы — в минимальных единицах валюты (центы для USD).
         if let e = json["extra_usage"] as? [String: Any],
            (e["is_enabled"] as? Bool) == true,
-           let limit = e["monthly_limit"] as? Double {
+           let limit = e["monthly_limit"] as? Double, limit > 0 {
             extra = ExtraUsage(isEnabled: true,
                                usedMinor: (e["used_credits"] as? Double) ?? 0,
                                limitMinor: limit,
@@ -200,9 +236,9 @@ enum UsageAPI {
                                currency: (e["currency"] as? String) ?? "USD")
         }
 
-        return UsageSnapshot(session: session,
-                             week: week,
-                             weekOpus: opus,
+        return UsageSnapshot(session: session ?? empty,
+                             week: week ?? empty,
+                             weekModels: modelLimits(json, plan: plan),
                              extra: extra,
                              plan: plan,
                              fetchedAt: Date())

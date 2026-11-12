@@ -33,16 +33,24 @@ struct ExtraUsage: Equatable {
     var limitText: String { format(limitMinor) }
 }
 
+/// Недельный лимит отдельной модели (Sonnet, Opus, Fable…).
+struct ModelLimit: Equatable {
+    var name: String
+    var bucket: LimitBucket
+}
+
 struct UsageSnapshot: Equatable {
     var session: LimitBucket
     var week: LimitBucket
-    var weekOpus: LimitBucket?
+    var weekModels: [ModelLimit] = []
     var extra: ExtraUsage?
     var plan: String?            // pro / max ...
     var fetchedAt: Date
 
     /// Наиболее «горячий» лимит — по нему красится иконка.
-    var worstPercent: Double { max(session.percent, max(week.percent, weekOpus?.percent ?? 0)) }
+    var worstPercent: Double {
+        weekModels.map(\.bucket.percent).reduce(max(session.percent, week.percent)) { max($0, $1) }
+    }
 }
 
 enum UsageError: LocalizedError, Equatable {

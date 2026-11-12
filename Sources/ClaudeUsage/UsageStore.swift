@@ -113,10 +113,11 @@ final class UsageStore: ObservableObject {
         snapshot = UsageSnapshot(
             session: LimitBucket(percent: 61, resetsAt: Date().addingTimeInterval(6900), lockedReason: nil),
             week: LimitBucket(percent: 41, resetsAt: Date().addingTimeInterval(3.4 * 86400), lockedReason: nil),
-            weekOpus: LimitBucket(percent: 18, resetsAt: nil, lockedReason: nil),
+            weekModels: [ModelLimit(name: "Sonnet",
+                                    bucket: LimitBucket(percent: 18, resetsAt: nil, lockedReason: nil))],
             extra: ExtraUsage(isEnabled: true, usedMinor: 172, limitMinor: 5000,
                               decimalPlaces: 2, currency: "USD"),
-            plan: "pro",
+            plan: "max",
             fetchedAt: Date())
     }
 

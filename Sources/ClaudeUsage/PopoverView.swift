@@ -22,10 +22,10 @@ struct PopoverView: View {
                             trailing: nil,
                             footnote: paceText(snapshot))
 
-                if let opus = snapshot.weekOpus {
-                    CompactRow(label: T("label.opus"),
-                               percent: opus.percent,
-                               detail: Fmt.percent(opus.percent))
+                ForEach(snapshot.weekModels, id: \.name) { model in
+                    CompactRow(label: T("label.model", model.name),
+                               percent: model.bucket.percent,
+                               detail: Fmt.percent(model.bucket.percent))
                 }
                 if let extra = snapshot.extra {
                     CompactRow(label: T("label.extra"),

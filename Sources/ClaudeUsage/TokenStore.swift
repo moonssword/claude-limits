@@ -17,6 +17,7 @@ enum TokenStore {
     struct CachedToken: Codable {
         var token: String
         var expiresAt: Date?
+        var subscriptionType: String?
 
         var isUsable: Bool {
             guard let expiresAt else { return true }
