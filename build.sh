@@ -8,6 +8,16 @@ BUNDLE_ID="com.ibulat.claudeusage"
 VERSION="1.0.2"
 APP="build/${APP_NAME}.app"
 
+# В Command Line Tools без Xcode нет плагина макросов SwiftUI, а в SDK macOS 27
+# @State стал макросом — сборка падает. Берём последний SDK 26, если он есть.
+if [ -z "${SDKROOT:-}" ] && [ "$(xcode-select -p)" = "/Library/Developer/CommandLineTools" ]; then
+  SDK26=$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX26.*.sdk 2>/dev/null | sort -V | tail -1 || true)
+  if [ -n "$SDK26" ]; then
+    export SDKROOT="$SDK26"
+    echo "▸ SDK: $SDKROOT"
+  fi
+fi
+
 echo "▸ Сборка бинарника…"
 swift build -c release
 
